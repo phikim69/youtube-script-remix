@@ -35,12 +35,12 @@ def get_transcript(video_id):
         return None
 
 def download_audio(youtube_url):
-    """Tải audio về máy chủ tạm thời"""
-    output_filename = "audio_temp.mp3"
+    """Tải audio về máy chủ tạm thời với cấu hình chống chặn"""
+    output_filename = "audio_temp" # Không cần đuôi .mp3 ở đây, yt-dlp tự thêm
     
-    # Xóa file cũ nếu tồn tại
-    if os.path.exists(output_filename):
-        os.remove(output_filename)
+    # Xóa file cũ nếu tồn tại (kiểm tra cả .mp3 và các đuôi khác)
+    if os.path.exists(f"{output_filename}.mp3"):
+        os.remove(f"{output_filename}.mp3")
         
     ydl_opts = {
         'format': 'bestaudio/best',
@@ -49,16 +49,28 @@ def download_audio(youtube_url):
             'preferredcodec': 'mp3',
             'preferredquality': '128',
         }],
-        'outtmpl': 'audio_temp',
-        'quiet': True
+        'outtmpl': output_filename,
+        'quiet': True,
+        # --- CÁC CẤU HÌNH MỚI ĐỂ VƯỢT TƯỜNG LỬA ---
+        'geo_bypass': True,             # Cố gắng vượt qua chặn địa lý
+        'geo_bypass_country': 'VN',     # Giả mạo yêu cầu đến từ Việt Nam
+        'nocheckcertificate': True,     # Bỏ qua lỗi chứng chỉ SSL
+        'source_address': '0.0.0.0',    # Ép dùng IPv4
+        # Giả lập trình duyệt Chrome trên Windows
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-us,en;q=0.5',
+            'Sec-Fetch-Mode': 'navigate',
+        }
     }
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([youtube_url])
-        return output_filename
+        return f"{output_filename}.mp3"
     except Exception as e:
-        st.error(f"Lỗi tải audio: {str(e)}")
+        st.error(f"Lỗi tải audio (YouTube chặn IP server): {str(e)}")
         return None
 
 def process_content(api_key, content_input, input_type="text", mode="summary", style="Tự nhiên"):
@@ -188,3 +200,4 @@ if youtube_url and api_key:
         st.error("Link không hợp lệ.")
 elif youtube_url and not api_key:
     st.warning("Vui lòng nhập API Key.")
+
